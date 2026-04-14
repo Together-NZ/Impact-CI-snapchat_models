@@ -73,7 +73,6 @@ GROUP BY
 
 SELECT * EXCEPT(ad_name), ad_name AS creative_name,
     'Snapchat' AS publisher,
-    REGEXP_EXTRACT(media_buy_name, r'PLATFORM_([^_]+)') AS audience_name,
     CASE 
         WHEN SPLIT (ad_name,'_')[OFFSET(1)] LIKE 'SOCIAL%'
         AND (
@@ -90,6 +89,10 @@ SELECT * EXCEPT(ad_name), ad_name AS creative_name,
         THEN 'Social Display'
         ELSE 'Other'
     END AS media_format,
+    CASE WHEN ARRAY_LENGTH(SPLIT(media_buy_name, '_')) < 8 AND ARRAY_LENGTH(SPLIT(media_buy_name, '_')) > 1  
+         THEN SPLIT(media_buy_name, '_')[SAFE_OFFSET(ARRAY_LENGTH(SPLIT(media_buy_name, '_'))-1)] 
+         WHEN ARRAY_LENGTH(SPLIT(media_buy_name, '_')) >= 8 THEN SPLIT(media_buy_name, '_')[SAFE_OFFSET(7)] 
+         ELSE 'Other' END AS audience_name,
     CASE WHEN ARRAY_LENGTH(SPLIT(ad_name, '_')) < 8 AND ARRAY_LENGTH(SPLIT(ad_name, '_')) > 1  
          THEN SPLIT(ad_name, '_')[SAFE_OFFSET(ARRAY_LENGTH(SPLIT(ad_name, '_'))-1)] 
          WHEN ARRAY_LENGTH(SPLIT(ad_name, '_')) >= 8 THEN SPLIT(ad_name, '_')[SAFE_OFFSET(7)] 
