@@ -7,7 +7,7 @@ campaign AS (
         JSON_EXTRACT_SCALAR(data, "$.status") AS campaign_status,
         JSON_EXTRACT_SCALAR(data, "$.start_time") AS campaign_start_time,
         JSON_EXTRACT_SCALAR(data, "$.end_time") AS campaign_end_time,
-        ROW_NUMBER() OVER (PARTITION BY JSON_EXTRACT_SCALAR(data, "$.id"), ORDER BY _sdc_extracted_at ) as row_num
+        ROW_NUMBER() OVER (PARTITION BY JSON_EXTRACT_SCALAR(data, "$.id") ORDER BY _sdc_extracted_at ) as row_num
     FROM {{ source(source_name, table_name) }}
 ),
 campaign_filtered AS (
