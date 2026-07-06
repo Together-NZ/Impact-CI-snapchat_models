@@ -1,44 +1,11 @@
 {% macro final_calculation() %}
-combined_data AS (
-    SELECT 
-    -- combined data
-        ad_stat.id AS ad_key,
-        ad_stat.ad_start_time,
-        ad_stat.impressions,
-        ad_stat.spend as media_cost,
-        ad_stat.quartile_1,
-        ad_stat.quartile_2,
-        ad_stat.quartile_3,
-        ad_stat.view_completion,
-        ad_stat.frequency,
-        ad_stat.clicks,
-        ad_stat.video_views,
-        ad_stat.view_time_millis,
-        ad_details.ad_name,
-        ad_details.ad_type,
-        ad_details.ad_updated_at,
-        ad_details.ad_created_at,
-        ad_details.media_buy_external_id,
-        ad_details.campaign_advertiser_id,
-        ad_squad.media_buy_name,
-        ad_squad.ad_squad_type,
-        ad_squad.media_buy_cost_model,
-        campaign.campaign_id,
-        campaign.campaign_name,
-        campaign.campaign_status,
-        campaign.campaign_start_time,
-        campaign.campaign_end_time
-    FROM ad_stat_filtered ad_stat
-    LEFT JOIN ad_details_filtered ad_details ON ad_stat.id = ad_details.id
-    LEFT JOIN ad_squad_filtered ad_squad ON ad_details.media_buy_external_id = ad_squad.id
-    LEFT JOIN campaign_filtered campaign ON ad_squad.campaign_id = campaign.campaign_id
-),
-final AS (
+semi_final as (
 
--- Step 6: Aggregate and finalize data
+SELECT parsed_data.* except(ad_id), ad_joint.* FROM ad_stat_filtered AS parsed_data LEFT JOIN ad_joint ON parsed_data.ad_id=ad_joint.ad_id),
+non_result AS (
 SELECT 
     ad_start_time AS date,
-    ad_key,
+    ad_id,
     ad_name,
     ad_type,
     SUM(CAST(quartile_1 AS INT64)) AS video_25_completion,
@@ -62,17 +29,30 @@ SELECT
     campaign_end_time,
     campaign_id,
     campaign_name,
+    raw_data,
     campaign_status,
-    ROW_NUMBER() OVER (PARTITION BY ad_start_time, ad_key, campaign_name) AS row_num
+    ROW_NUMBER() OVER (PARTITION BY ad_start_time, ad_id, campaign_name) AS row_num
 FROM 
-    combined_data
+    semi_final
 GROUP BY 
-    ad_start_time, ad_key, ad_name, ad_type, ad_updated_at, ad_created_at, media_buy_external_id, 
+    ad_start_time, ad_id, ad_name, ad_type, ad_updated_at, ad_created_at, media_buy_external_id, 
     media_buy_name, ad_squad_type, campaign_advertiser_id, campaign_start_time, campaign_end_time,
-    campaign_id, campaign_name, campaign_status, media_buy_cost_model)
-
-SELECT * EXCEPT(ad_name), ad_name AS creative_name,
-    'Snapchat' AS publisher,
+    campaign_id, campaign_name, campaign_status, media_buy_cost_model,raw_data)
+SELECT *, 
+CASE WHEN media_buy_cost_model ='impressions' THEN impressions
+WHEN media_buy_cost_model = 'swipes' THEN clicks
+WHEN media_buy_cost_model = 'landing_page_view' THEN SAFE_CAST(JSON_VALUE(raw_data,'$.landing_page_views') AS INT64)
+WHEN media_buy_cost_model = 'video_views_15_sec' THEN SAFE_CAST(JSON_VALUE(raw_data,'$.video_views_15s') AS INT64)
+WHEN media_buy_cost_model = 'video_views' THEN SAFE_CAST(JSON_VALUE(raw_data,'$.video_views') AS INT64)
+WHEN media_buy_cost_model = 'app_installs' THEN SAFE_CAST(JSON_VALUE(raw_data,'$.total_installs_app') AS INT64)
+WHEN media_buy_cost_model = 'story_opens' THEN SAFE_CAST(JSON_VALUE(raw_data,'$.story_opens') AS INT64)
+WHEN media_buy_cost_model = 'pixel_page_view' THEN SAFE_CAST(JSON_VALUE(raw_data,'$.conversion_page_views') AS INT64)
+WHEN media_buy_cost_model IN ('pixel_add_to_cart','app_add_to_cart') THEN SAFE_CAST(JSON_VALUE(raw_data,'$.conversion_add_cart') AS INT64)
+WHEN media_buy_cost_model IN ('pixel_purchase','app_purchase') THEN SAFE_CAST(JSON_VALUE(raw_data,'$.conversion_purchases') AS INT64)
+WHEN media_buy_cost_model IN ('pixel_signup','app_signup') THEN SAFE_CAST(JSON_VALUE(raw_data,'$.conversion_sign_ups') AS INT64)
+WHEN media_buy_cost_model = 'lead_form_submissions' THEN SAFE_CAST(JSON_VALUE(raw_data,'$.native_leads') AS INT64)
+ELSE 0 END AS result,
+   'Snapchat' AS publisher,
     CASE 
         WHEN SPLIT (ad_name,'_')[OFFSET(1)] LIKE 'SOCIAL%'
         AND (
@@ -98,6 +78,5 @@ SELECT * EXCEPT(ad_name), ad_name AS creative_name,
          ELSE 'Other' END AS ad_format,
     CASE WHEN ARRAY_LENGTH(SPLIT(campaign_name,'_')) <=1 THEN 'Other'
         ELSE SPLIT(campaign_name,'_')[SAFE_OFFSET(1)] END AS campaign_descr
-
-FROM final WHERE row_num = 1
+from non_result
 {% endmacro %}
