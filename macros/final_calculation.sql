@@ -6,7 +6,7 @@ non_result AS (
 SELECT 
     ad_start_time AS date,
     ad_id,
-    ad_name AS creative_name,
+    ad_name,
     ad_type,
     SUM(CAST(quartile_1 AS INT64)) AS video_25_completion,
     SUM(CAST(quartile_2 AS INT64)) AS video_50_completion,
