@@ -53,6 +53,7 @@ WHEN media_buy_cost_model IN ('pixel_signup','app_signup') THEN SAFE_CAST(JSON_V
 WHEN media_buy_cost_model = 'lead_form_submissions' THEN SAFE_CAST(JSON_VALUE(raw_data,'$.native_leads') AS INT64)
 ELSE 0 END AS result,
    'Snapchat' AS publisher,
+   'Snapchat' AS platform,
     CASE 
         WHEN SPLIT (ad_name,'_')[OFFSET(1)] LIKE 'SOCIAL%'
         AND (
