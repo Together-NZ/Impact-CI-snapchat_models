@@ -31,7 +31,7 @@ SELECT
     campaign_name,
     raw_data,
     campaign_status,
-    ROW_NUMBER() OVER (PARTITION BY ad_start_time, ad_id, campaign_name) AS row_num
+    ROW_NUMBER() OVER (PARTITION BY ad_start_time, ad_id ORDER BY ad_updated_at DESC) AS row_num
 FROM 
     semi_final
 GROUP BY 
@@ -79,4 +79,5 @@ ELSE 0 END AS result,
     CASE WHEN ARRAY_LENGTH(SPLIT(campaign_name,'_')) <=1 THEN 'Other'
         ELSE SPLIT(campaign_name,'_')[SAFE_OFFSET(1)] END AS campaign_descr
 from non_result
+WHERE row_num = 1
 {% endmacro %}
