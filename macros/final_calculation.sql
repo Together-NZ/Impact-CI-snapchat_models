@@ -71,7 +71,7 @@ ELSE 0 END AS result,
     END AS media_format,
     REGEXP_EXTRACT(media_buy_name, r'PLATFORM_([^_]+)') AS audience_name,
     CASE WHEN ARRAY_LENGTH(SPLIT(ad_name, '_')) >= 8 THEN SPLIT(ad_name, '_')[SAFE_OFFSET(7)] 
-         ELSE 'Other' END AS creative_descr,
+         ELSE ad_name END AS creative_descr,
     CASE WHEN ARRAY_LENGTH(SPLIT(ad_name, '_')) >= 7 THEN SPLIT(ad_name, '_')[SAFE_OFFSET(5)] 
          ELSE 'Other' END AS ad_format_detail,
     CASE WHEN ARRAY_LENGTH(SPLIT(ad_name, '_')) >= 7 THEN SPLIT(ad_name, '_')[SAFE_OFFSET(6)] 
